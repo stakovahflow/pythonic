@@ -1,3 +1,6 @@
 .DS_Store
 memtest.txt
 dummy.csv
+dummy-local.csv
+ssh-exec-sudo.log
+ssh-exec-sudo-2023-08-12_014620.log
