@@ -6,7 +6,7 @@ import os
 import pexpect
 import csv
 #import getpass
-#import time
+import time
 import argparse
 import sys
 from sys import argv
@@ -37,7 +37,7 @@ LOGFILE=('ssh-exec-sudo.log')
 
 def logger(string):
 	with open(LOGFILE,'ab') as f:
-		f.write(('\n%s' % (string)).encode('utf-8'))
+		f.write(('\n%s\n' % (string)).encode('utf-8'))
 		if verbosity:
 			print(string)
 
@@ -59,13 +59,14 @@ def SSHSUDO(HOSTNAME,USERNAME,PASSWORD,COMMAND):
 			p = pxssh.pxssh(options={"StrictHostKeyChecking": "no","UserKnownHostsFile": "/dev/null"})
 			p.force_password = True
 			p.login(HOSTNAME, USERNAME, PASSWORD, auto_prompt_reset=False, terminal_type='ansi', original_prompt='[#$]', login_timeout=10)
-			p.waitnoecho()
-			p.logfile=f
 			p.setecho(False)
+			p.logfile=f
+			p.waitnoecho()
 			index = p.expect(['$', pexpect.EOF])
 			LoginUser = '\[sudo\] password for %s:' % (USERNAME)
 			#FailedUser = USERNAME+' is not in the sudoers file.  This incident will be reported.'
 			if index == 0:
+				time.sleep(0.5)
 				p.sendline('sudo -s')
 				logger("Logged into: %s\n" %(HOSTNAME))
 				index2 = p.expect([LoginUser,'[#]','[$]',pexpect.TIMEOUT,pexpect.EOF])
