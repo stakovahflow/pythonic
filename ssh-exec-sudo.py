@@ -97,6 +97,7 @@ def SSHSUDO(HOSTNAME,USERNAME,PASSWORD,COMMAND):
 				else:
 					logger("Unable to determine the prompt")
 					p.expect(["[#]","[$]"])
+					return('Failed!')	
 				p.sendline(COMMAND)
 				p.expect(["[#]","[$]"])
 				output=p.after.decode('utf-8').splitlines()
@@ -118,7 +119,9 @@ def SSHSUDO(HOSTNAME,USERNAME,PASSWORD,COMMAND):
 		logger("No output")
 		return('Failed!')
 	else:
-		logger("Command execution successful %s" % (COMMAND))
+		logger("Command execution successful: '%s'" % (COMMAND))
+		logger('Success!')
+	logger(LINE)
 	return('Success!')
 
 # Password decoder:
