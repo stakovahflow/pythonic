@@ -16,11 +16,13 @@ from datetime import datetime
 from os import get_terminal_size
 
 verbosity = False
-#debugging = False
+debugging = False
 loglevel = 0
 
+def TIMESTAMP():
+    return(datetime.now().strftime("%Y-%m-%d_%H%M%S"))
 WIDTH=(get_terminal_size()[0])-1
-STARTTIME=datetime.now().strftime("%Y-%m-%d_%H%M%S")
+STARTTIME=TIMESTAMP()
 LINE='-'*WIDTH
 LOGFILE=('ssh-exec-sudo.log')
 # parse csv for:
@@ -41,6 +43,10 @@ def logger(string):
 		if verbosity:
 			print(string)
 
+def logonly(string):
+	with open(LOGFILE,'ab') as f:
+		f.write(('\r\n%s' % (string)).encode('utf-8'))
+
 def SemicolonToArray(string):
 	# Creat an array from a comma (,) separated string 
 	output = list(string.split(";"))
@@ -53,9 +59,9 @@ def CommaToArray(string):
 
 def SSHSUDO(HOSTNAME,USERNAME,PASSWORD,COMMAND):
 	commandoutput=[]
+	STATUS = 'Failed!'
 	try:
 		with open(LOGFILE,'ab') as f:
-			print("Attempting connection to %s via SSH" % (HOSTNAME))
 			p = pxssh.pxssh(options={"StrictHostKeyChecking": "no","UserKnownHostsFile": "/dev/null"})
 			p.force_password = True
 			p.login(HOSTNAME, USERNAME, PASSWORD, auto_prompt_reset=False, terminal_type='ansi', original_prompt='[#$]', login_timeout=10)
@@ -72,48 +78,46 @@ def SSHSUDO(HOSTNAME,USERNAME,PASSWORD,COMMAND):
 				logger("Logged into: %s\n" %(HOSTNAME))
 				index2 = p.expect([LoginUser,'[#]','[$]',pexpect.TIMEOUT,pexpect.EOF])
 				if index2 == 0:
-					logger("Logging in with sudo password\n")
+					logger("Attempting privilege escalation with password")
 					p.logfile = None
 					p.sendline(PASSWORD)
 					p.logfile = f
 					index3 = p.expect(['[#]','[$]'])
 					if index3 == 0:
-						logger("SUDO access granted\n")
+						logger("Privilege escalation granted\n")
 					elif index3 == 1:
-						logger("Privilege escalagion failed. Exiting.\n")
+						logger("Privilege escalagion failed.")
 						p.logfile = None
 						p.sendline('\003')
 						p.logfile = f
 						p.sendline('exit')
-						return('Failed!')
+						return(STATUS)
 					else:
 						logger("Unable to determine what happened. See error message for details.\n")
-						return('Failed!')
+						return(STATUS)
 				elif index2 == 1:
-					logger("Logged in without sudo password\n")
+					logger("Privilege escalation without password")
 				elif index2 == 2:
 					p.sendline('\n\n\n')
 					logger("Privilege escalagion failed. Exiting.\n")
 					p.logout()
-					return('Failed!')
 				elif index2 == 3:
 					logger("SUDO access timed out\n")
-					return('Failed!')
+					STATUS = 'Timeout'
 				else:
 					logger("Unable to determine the prompt")
-					p.expect(["[#]","[$]"])
-					return('Failed!')
+					#p.expect(["[#]","[$]"])
+					return('Undetermined')
 				p.logfile = None
 				p.sendline(COMMAND)
 				p.logfile = f
 				p.expect(["[#]","[$]"])
-				output=p.after.decode('utf-8').splitlines()
-				for line in output:
-					commandoutput.append(line)
 				p.logfile = None
 				p.sendline("exit")
 				p.expect("$")
 				p.logout()
+				p.logfile = f
+				STATUS = 'Success!'
 			else:
 				logger("Cannot log into host: %s" %(HOSTNAME))
 	except pxssh.ExceptionPxssh as e:
@@ -122,14 +126,7 @@ def SSHSUDO(HOSTNAME,USERNAME,PASSWORD,COMMAND):
 	except Exception as e:
 		logger("Exception (General):")
 		logger(str(e))
-	if commandoutput == []:
-		logger("No output")
-		return('Failed!')
-	else:
-		logger("Command execution successful: '%s'" % (COMMAND))
-		logger('Success!\n')
-	logger(LINE)
-	return('Success!')
+	return(STATUS)
 
 # Password decoder:
 def DeCoder(EncodedString):
@@ -138,7 +135,7 @@ def DeCoder(EncodedString):
 	return output
 
 # CSV Parser:
-def CSVParser(CSVFile):
+def CSVParser(CSVFile,Mode):
 	if os.path.isfile(CSVFile):
 		with open(CSVFile, 'r', encoding='utf-8') as C:
 			CSVData = csv.reader(C)
@@ -148,7 +145,8 @@ def CSVParser(CSVFile):
 			CSVData = list(csv.reader(C))
 			for CSVLine in CSVData:
 				try:
-					CMDCOUNT = 1
+					logger(LINE)
+					CMDCOUNT = 0
 					if COUNT > 0:
 						HOSTNAME = CSVLine[0]
 						USERNAME = CSVLine[1]
@@ -159,32 +157,41 @@ def CSVParser(CSVFile):
 							logger("Username: %s" % (USERNAME))
 							logger("Commands: %s" % (SemicolonToArray(COMMANDS)))
 						for COMMAND in SemicolonToArray(COMMANDS):
-							logger("Command (%d): %s" % (CMDCOUNT, COMMAND))
+							STATUS = 'Failed!'
 							CMDCOUNT+=1
-							STATUS=(SSHSUDO(HOSTNAME,USERNAME,PASSWORD,COMMAND))
-							if STATUS == 'Failed!':
-								logger('Remote system unavailable.\nSkipping...')
+							COMMANDLOGSTRING = "Attempting to run the following command on '%s' via SSH: '%s'" % (HOSTNAME,COMMAND)
+							with open(LOGFILE,'ab') as f:
+								f.write(('\r\n%s' % (COMMANDLOGSTRING)).encode('utf-8'))
+							print(COMMANDLOGSTRING)
+							if Mode == True:
+								logger("Dry run: (%d): %s" % (CMDCOUNT, COMMAND))
+								STATUS = 'Success!'
+							else:
+								logger("Running command (%d):' %s'" % (CMDCOUNT, COMMAND))
+								STATUS=(SSHSUDO(HOSTNAME,USERNAME,PASSWORD,COMMAND))
+							if STATUS != 'Success!':
+								logger('Unable to perform SSH/sudo tasks.\nSkipping...')
 								break
-							if verbosity:
-								logger(STATUS)
+							#f.write(('\r\n%s' % (STATUS)).encode('utf-8'))
+							logonly("SSH access to %s status: %s" % (HOSTNAME, STATUS))
 					else:
 						if verbosity:
-							logger("Skipping header")
+							logger("Skipping CSV file '%s' header" %(CSVFile))
 				except:
 					continue
 				COUNT+=1
 
 try:
 	logger(LINE)
-	logger(STARTTIME)
+	logger("Start time: %s" % (TIMESTAMP()))
 	logger(LINE)
 	# GET ARGUMENTS using ARGPARSE
 	parser = argparse.ArgumentParser(description='\nAutomate commands on remote Linux hosts\n\
 	\t\tEnjoy! -a', formatter_class=argparse.RawTextHelpFormatter)
 	parser.add_argument("-f", "--file", type=str, dest="file", action="store", help="CSV filename")
-	parser.add_argument("-v", "--verbose", help="Enable verbose output (may contain sensitive information)", action="store_true")
-	parser.add_argument("-d", "--display", help="Display data from CSV file", action="store_true")
-	parser.add_argument("-l", "--log", type=int, dest="log", help="Set logging level (disabled(0), debug(1))")
+	parser.add_argument("-d", "--display", action="store_true", help="Display contents of CSV without running")
+	parser.add_argument("--debug", action="store_true", help="Enable additional debug logging")
+	parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output (may contain sensitive information)")
 
 	# COLLECT ARGPARSE RESULTS
 	results = args = parser.parse_args()
@@ -200,20 +207,22 @@ try:
 		logger("No CSV file specified (--file)")
 		parser.print_help(sys.stderr)
 		exit(0)
-	if args.log:
-		if args.log == 1:
-			loglevel = 'DEBUG'
-			debugging = True
-		else:
-			debugging = False
-		logger("Log level set: %s" % (log))
-		
+	if args.display:
+		Mode = True
+	else:
+		Mode = False
+	
+	if args.debug:
+		debugging = True
+		logger("Log level set: %s" % (debugging))
+	
 	if args.verbose:
 		verbosity = True
-	if args.display:
-		CSVParser(CSVFile)
+	
+	CSVParser(CSVFile,Mode)
+	
 	logger(LINE)
-	logger("Completed")
+	logger("Completed: %s" % (TIMESTAMP()))
 	print("See logfile for more details: %s" % (LOGFILE))
 except Exception as e:
 	logger("An error occurred: ")
