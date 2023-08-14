@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Version:  0.01
 # Author:   AT Sowell
-# Modified: 2023-08-11
+# Modified: 2023-08-13
 import os
 import pexpect
 import csv
