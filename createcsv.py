@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-import sys
-import os
-import getpass
-import csv
-import argparse
-from datetime import datetime
-from os import get_terminal_size
+# Version:  0.01
+# Author:   AT Sowell
+# Modified: 2023-08-18
+
+##########################################################################
+# Description
+# Create user-defined CSV containing:
+# 	host (IP)
+# 	username
+# 	password (base64-encoded)
+# 	commands
 
 # Setting Global Variables:
-WIDTH=(get_terminal_size()[0])-1
-STARTTIME=datetime.now().strftime("%Y-%m-%d_%H%M%S")
-LINE='-'*WIDTH
+ScreenWidth=(get_terminal_size()[0])-1
+StartTime=datetime.now().strftime("%Y-%m-%d_%H%M%S")
+PrintLine='-'*ScreenWidth
 verbosity=False
 
 # Password decoder:
@@ -32,29 +36,29 @@ def CSVParser(CSVFile):
 			CSVData = csv.reader(C)
 			print("Opened CSV: %s" % (CSVFile))
 			print("Data:")
-			COUNT=0
+			Count=0
 			CSVData = list(csv.reader(C))
-			for CSVLine in CSVData:
-				if COUNT > 0:
-					HOSTNAME = CSVLine[0]
-					USERNAME = CSVLine[1]
-					PASSWORD = DeCoder(CSVLine[2]).strip()
-					COMMANDS = CSVLine[3]
+			for CSVPrintLine in CSVData:
+				if Count > 0:
+					HostName = CSVPrintLine[0]
+					UserName = CSVPrintLine[1]
+					PassWord = DeCoder(CSVPrintLine[2]).strip()
+					CommandList = CSVPrintLine[3]
 					if verbosity == True:
-						print("Hostname: %s" % (HOSTNAME))
-						print("Username: %s" % (USERNAME))
-						print("Encoded Password: %s" % (PASSWORD))
-						print("Command: %s" % (COMMANDS))
-				COUNT+=1
+						print("HostName: %s" % (HostName))
+						print("UserName: %s" % (UserName))
+						print("Encoded Password: %s" % (PassWord))
+						print("Command: %s" % (CommandList))
+				Count+=1
 
-def CSVWriter(CSVFile,HOSTNAME,USERNAME,ENCODED,COMMANDS):
+def CSVWriter(CSVFile,HostName,UserName,EncodedString,CommandList):
 	if not os.path.isfile(CSVFile):
 		if verbosity:
 			print("Appending existing file: %s" % (CSVFile))
 		with open(CSVFile, 'a', encoding='UTF8') as f:
 			writer = csv.writer(f)
-			header = ['HOSTNAME','USERNAME','PASSWORD','COMMANDS']
-			row = [HOSTNAME,USERNAME,ENCODED,COMMANDS]
+			header = ['HostName','UserName','PassWord','CommandList']
+			row = [HostName,UserName,EncodedString,CommandList]
 			writer.writerow(header)
 			writer.writerow(row)
 			f.close()
@@ -63,7 +67,7 @@ def CSVWriter(CSVFile,HOSTNAME,USERNAME,ENCODED,COMMANDS):
 			print("Creating new file: %s" % (CSVFile))
 		with open(CSVFile, 'a', encoding='UTF8') as f:
 			writer = csv.writer(f)
-			row = [HOSTNAME,USERNAME,ENCODED,COMMANDS]
+			row = [HostName,UserName,EncodedString,CommandList]
 			writer.writerow(row)
 			f.close()
 
@@ -87,23 +91,23 @@ if args.file:
 	#	parser.print_help(sys.stderr)
 	#	exit(0)
 else:
-    print("No CSV file specified (--file)")
-    parser.print_help(sys.stderr)
-    exit(0)
+	print("No CSV file specified (--file)")
+	parser.print_help(sys.stderr)
+	exit(0)
 if args.verbose:
 	verbosity = True
 if args.display:
 	CSVParser(CSVFile)
 if args.append:
-    # Get input from user:
-	HOSTNAME = input("Hostname: ")
-	USERNAME = input("Username: ")
-	PASSWORD = getpass.getpass(prompt="Password: ")
-	ENCODED = EnCoder(PASSWORD)
-	DECODED = DeCoder(ENCODED)
-	COMMANDS = input("Commands (Separated by ';'): \n")
-	CSVWriter(CSVFile,HOSTNAME,USERNAME,ENCODED.decode('utf-8'),COMMANDS)
+	# Get input from user:
+	HostName = input("HostName: ")
+	UserName = input("UserName: ")
+	PassWord = getpass.getpass(prompt="Password: ")
+	EncodedString = EnCoder(PassWord)
+	DECODED = DeCoder(EncodedString)
+	CommandList = input("Commands (Separated by ';'): \n")
+	CSVWriter(CSVFile,HostName,UserName,EncodedString.decode('utf-8'),CommandList)
 	if verbosity == True:
-		print(HOSTNAME)
-		print(USERNAME)
-		print(ENCODED)
+		print(HostName)
+		print(UserName)
+		print(EncodedString)

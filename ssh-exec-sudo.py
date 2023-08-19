@@ -32,7 +32,7 @@ from datetime import datetime
 from os import get_terminal_size
 
 def TimeStamp():
-    return(datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+	return(datetime.now().strftime("%Y-%m-%d_%H%M%S"))
 
 def logger(string):
 	with open(LogFile,'ab') as f:
@@ -47,11 +47,6 @@ def logonly(string):
 def SemicolonToArray(string):
 	# Creat an array from a comma (,) separated string 
 	output = list(string.split(";"))
-	return output
-
-def CommaToArray(string):
-	# Creat an array from a comma (,) separated string 
-	output = list(string.split(","))
 	return output
 
 def SSHsudo(HostName,UserName,PassWord,Command):
@@ -224,7 +219,6 @@ def main():
 		logger("An error occurred: ")
 		logger(e)
 	logger(PrintLine)
-
 
 # Set global variables:
 verbosity = False
