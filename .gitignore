@@ -4,3 +4,9 @@ dummy.csv
 dummy-local.csv
 ssh-exec-sudo.log
 ssh-exec-sudo-2023-08-12_014620.log
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/pythonic.iml
+.idea/vcs.xml
+dummy2.csv
