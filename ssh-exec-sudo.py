@@ -18,7 +18,6 @@
 # 		Run additional commands
 # 
 ##########################################################################
-
 import os
 import pexpect
 import csv
@@ -215,9 +214,11 @@ def main():
 		logger(PrintLine)
 		logger("Completed: %s" % (TimeStamp()))
 		print("See logfile for more details: %s" % (LogFile))
+	except KeyboardInterrupt:
+		print('User cancelled process')
 	except Exception as e:
-		logger("An error occurred: ")
-		logger(e)
+		print('An exception occurred:')
+		print(e)
 	logger(PrintLine)
 
 # Set global variables:
