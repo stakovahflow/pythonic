@@ -10,3 +10,7 @@ ssh-exec-sudo-2023-08-12_014620.log
 .idea/pythonic.iml
 .idea/vcs.xml
 dummy2.csv
+dummy3.csv
+.gitignore
+.idea/codeStyles/codeStyleConfig.xml
+outfile.csv
