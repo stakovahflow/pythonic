@@ -75,7 +75,7 @@ def csvwriter(csvfilename, csvhostname, csvusername, csvencodedstring, csvcomman
 	else:
 		if verbosity:
 			print("Appending existing file: %s" % csvfilename)
-	with open(csvfile, 'a', encoding='utf-8') as f:
+	with open(csvfile, 'a', newline='', encoding='utf-8') as f:
 		writer = csv.writer(f)
 		row = [csvhostname, csvusername, csvencodedstring, csvcommandlist]
 		writer.writerow(row)
