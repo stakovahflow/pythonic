@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Last modified: 2024-01-15 @ 09:36
-version = 20240115001
+# Last modified: 2024-01-15 @ 17:55
+version = 20240115002
 import subprocess
 import ipaddress
 import os
@@ -46,7 +46,7 @@ def timestamp():
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     return timestamp
 
-def backup_interface_configurations(config_dir):
+def backup_interface_configurations():
     filename = f'/var/log/netplan-backup-{timestamp()}.tgz'
     logging.info(f'Backing up {config_dir} to {filename}')
     try:
@@ -60,7 +60,7 @@ def backup_interface_configurations(config_dir):
     for line in status_lines:
         logging.debug(line)
 
-def restore_interface_configuration(filename, config_dir):
+def restore_interface_configuration(filename):
     logging.info(f'Attempting to restore files from backup {filename}:')
     logging.debug(f'Removing current configuration files from {config_dir}')
     for file in os.listdir(config_dir):
@@ -247,7 +247,8 @@ def generate_netplan_config(iface, config_type, ip_cidr, gateway, dns, mtu):
     return config
 
 
-def view_netplan_configs(config_dir):
+# View netplan configurations located in /etc/netplan
+def view_netplan_configs():
     for filename in os.listdir(config_dir):
         if filename.endswith('.yaml') or filename.endswith('.yml'):
             filepath = os.path.join(config_dir, filename)
@@ -261,7 +262,7 @@ def view_netplan_configs(config_dir):
                 print(f"Error reading file {filepath}: {e}")
 
 # Clean-up function for all configuration files:
-def clean_up_netplan_configs(config_dir):
+def clean_up_netplan_configs():
     for filename in os.listdir(config_dir):
         if filename.endswith('.yaml') or filename.endswith('.yml'):
             filepath = os.path.join(config_dir, filename)
@@ -312,7 +313,7 @@ def remove_interface_single_config(interface, filepath):
         print(f"Could not open or write to file {filepath}: {e}")
 
 # Remove network interface configuration from all configuration files in (config_dir) - /etc/netplan:
-def remove_interface_all_configs(interface, config_dir):
+def remove_interface_all_configs(interface):
     for filename in os.listdir(config_dir):
         if filename.endswith('.yaml') or filename.endswith('.yml'):
             filepath = f'{config_dir}/{filename}'
@@ -324,7 +325,7 @@ def remove_interface_all_configs(interface, config_dir):
                 print(f"Could not open or write to file {filename}: {e}")
 
 # Provide a list of all files containing a specific interface name:
-def list_files_with_interface(interface_name, config_dir):
+def list_files_with_interface(interface_name):
     """
     List files in the given directory that contain the specified interface name.
     Args:
@@ -360,7 +361,7 @@ def display_config(config, filename):
     print(yaml.dump(config, default_flow_style=False))
 
 # Provide a sanity check for potential network interface configuration conflicts:
-def sanity_check(config_dir):
+def sanity_check():
     interface_files = {}  # Dictionary to store the files where each interface is defined
     # Iterate through the configuration files
     for filename in os.listdir(config_dir):
@@ -409,7 +410,7 @@ def clean_up_conflicts(conflicts):
                     print(f"You will be prompted for configuration details for {interface}")
                     new_interface(interface, interfaces)
                 elif clean_up_method == 'd':      # Delete all network configurations for affected interface definitions
-                    remove_interface_all_configs(interface, config_dir)
+                    remove_interface_all_configs(interface)
                 elif clean_up_method == 'i':      # Interactively select the configuration file to keep
                     print(f"Conflicting netplan configurations found for interface '{interface}':")
                     # get the index (number) and filename of the unique files containing specific network interface configuration details
@@ -438,7 +439,7 @@ def clean_up_conflicts(conflicts):
 def apply_configuration(interface, config_dir, config):
     config_path = f"{config_dir}/{interface}.yaml"
 
-    if not remove_interface_all_configs(interface, config_dir):
+    if not remove_interface_all_configs(interface):
         print(f"No existing configuration found for {interface}. Proceeding with new configuration.")
 
     try:
@@ -461,10 +462,10 @@ def new_interface(interface, interfaces):
     if apply == "yes" or apply == 'y':
         try:
             logging.info("Attempting to remove any unnecessary netplan configuration files:")
-            clean_up_netplan_configs(config_dir)
+            clean_up_netplan_configs()
         except Exception as e:
             logging.info("An error occurred when attempting to clean netplan configuration files", e)
-        apply_configuration(iface, config_dir, config)
+        apply_configuration(iface, config)
         if config_type == "none":
             logging.debug(f"Prompting user for promiscous configuration for interface {iface}")
             promiscuous = input(f'Enable promiscuous mode for interface {iface}? (yes/no) ').lower()
@@ -533,15 +534,15 @@ def main():
             exit(0)
         elif args.view:
             logging.debug("View interface configuration: ")
-            view_netplan_configs(config_dir)
+            view_netplan_configs()
             exit(0)
         elif args.backup:
             logging.info(f"Backing up netplan configuration files")
-            backup_interface_configurations(config_dir)
+            backup_interface_configurations()
             exit(0)
         elif args.sanity:
             logging.debug("Looking for conflicting interface configuration entries")
-            conflicts = sanity_check(config_dir)
+            conflicts = sanity_check()
             for iface, files in conflicts.items():
                 if len(files) > 1:
                     logging.info(f"Conflicting netplan configurations found for interface '{iface}':")
@@ -551,7 +552,7 @@ def main():
             try:
                 filename = args.restore
                 logging.info(f"Restoring netplan configuration files")
-                restore_interface_configuration(filename, config_dir)
+                restore_interface_configuration(filename)
             except FileNotFoundError as fnf:
                 logging.error(f"Unable to find file {filename}: {fnf}")
             except Exception as e:
@@ -559,19 +560,19 @@ def main():
                 logging.error(e)
         
         elif args.remove:
-            backup_interface_configurations(config_dir)
+            backup_interface_configurations()
             logging.debug(f"Removing interface {interface} configuration: ")
-            remove_interface_all_configs(interface, config_dir)
-            clean_up_netplan_configs(config_dir)
+            remove_interface_all_configs(interface)
+            clean_up_netplan_configs()
             exit(0)
 
         elif args.clean:
-            backup_interface_configurations(config_dir)
+            backup_interface_configurations()
             logging.debug("Cleaning interface configuration: ")
-            clean_up_netplan_configs(config_dir)
-            conflicts = sanity_check(config_dir)
+            clean_up_netplan_configs()
+            conflicts = sanity_check()
             clean_up_conflicts(conflicts)
-            clean_up_netplan_configs(config_dir)
+            clean_up_netplan_configs()
             exit(0)
 
         else:
